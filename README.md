@@ -1,0 +1,2 @@
+# Flask + Bootstrap + SQLite3 Application Template
+This is a simple Flask application template that uses Bootstrap for the front-end and SQLite3 for the database. It is a good starting point for creating a new Flask application.
