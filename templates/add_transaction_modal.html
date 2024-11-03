@@ -1,0 +1,190 @@
+<!-- Add Transaction Modal -->
+<div class="modal fade" id="addTransactionModal" tabindex="-1" aria-labelledby="addTransactionModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addTransactionModalLabel">Add Transaction</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addTransactionForm" action="{{ url_for('add_transaction') }}" method="POST">
+                    <input type="hidden" name="trip_id" value="{{ trip.id }}">
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <input type="text" class="form-control" id="description" name="description" placeholder="Transaction Description"
+                               required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="payer_id" class="form-label">Payer</label>
+                        <select class="form-select" id="payer_id" name="payer_id" required>
+                            <option value="" disabled selected>Select Payer</option>
+                            {% for user in participants %}
+                                <option value="{{ user.id }}">{{ user.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <!-- Date and Time Inputs -->
+                    <div class="mb-3 d-flex justify-content-between">
+                        <div class="me-2">
+                            <label for="date" class="form-label">Date</label>
+                            <input type="date" class="form-control" id="transactionDate" name="date" value="{{ current_date }}"
+                                   required>
+                        </div>
+                        <div>
+                            <label for="time" class="form-label">Time</label>
+                            <input type="time" class="form-control" id="transactionTime" name="time" value="{{ current_time }}"
+                                   required>
+                        </div>
+                    </div>
+                    <!-- Total Amount Input -->
+                    <div class="mb-3">
+                        <label for="total" class="form-label">Total Amount({{ trip.currency }})</label>
+                        <input type="number" class="form-control" id="totalAmount" name="total" placeholder="Total Amount" min="0"
+                               required>
+                    </div>
+
+                    <!-- Participant Selection -->
+                    <div class="mb-3">
+                        <label for="participants" class="form-label">Participants</label>
+                        <button type="button" class="btn btn-secondary mb-2" id="selectAllButton">Select All</button>
+                        <button type="button" class="btn btn-secondary mb-2" id="splitEvenlyButton">Split Evenly
+                        </button>
+                        <div class="list-group" id="participants">
+                            {% for user in participants %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <input type="checkbox" class="form-check-input" value="{{ user.id }}"
+                                           id="participant{{ user.id }}" onchange="handleCheckboxChange(this)">
+                                    <span>{{ user.name }}</span>
+                                    <input type="number" class="form-control w-50 ms-3" placeholder="Amount Owed"
+                                           min="0" step="0.01" id="amount_owed_{{ user.id }}" name="amount_owed_{{ user.id }}"
+                                           oninput="updateParticipantAmount(this)" disabled>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+
+                    <button type="submit" class="btn btn-primary" disabled>Add Transaction</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', (event) => {
+        // Get current date and time
+        const now = new Date();
+
+        // Format date as YYYY-MM-DD
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+        const day = String(now.getDate()).padStart(2, '0');
+        const currentDate = `${year}-${month}-${day}`;
+
+        // Set current date and time as defaults
+        document.getElementById('transactionDate').value = currentDate;
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        document.getElementById('transactionTime').value = `${hours}:${minutes}`;
+
+        // Select All functionality
+        document.getElementById('selectAllButton').addEventListener('click', () => {
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            const allChecked = Array.from(checkboxes).every(checkbox => checkbox.checked);
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = !allChecked;
+                handleCheckboxChange(checkbox); // Update the amount owed fields based on selection
+            });
+            updateSubmitButtonState();
+        });
+
+        // Split Evenly functionality
+        document.getElementById('splitEvenlyButton').addEventListener('click', () => {
+            const totalInput = document.getElementById('totalAmount');
+            const totalAmount = parseFloat(totalInput.value) || 0;
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+            const selectedParticipants = Array.from(checkboxes).map(checkbox => checkbox.value);
+            const numberOfParticipants = selectedParticipants.length;
+
+            if (numberOfParticipants > 0) {
+                const splitAmount = (totalAmount / numberOfParticipants).toFixed(2); // Split amount for each participant
+                selectedParticipants.forEach(participantId => {
+                    const amountInput = document.getElementById(`amount_owed_${participantId}`);
+                    amountInput.value = splitAmount; // Set the split amount
+                    amountInput.disabled = false; // Enable input
+                });
+                calculateRemainingAmount(); // Calculate any remaining amount
+            }
+            updateSubmitButtonState(); // Check total amount and enable/disable submit button
+        });
+    });
+
+
+    function updateParticipantAmount(input) {
+        // Update the amounts and check the totals
+        calculateRemainingAmount(); // Calculate remaining amount
+        updateSubmitButtonState(); // Update submit button state
+    }
+
+    function handleCheckboxChange(checkbox) {
+        const amountInput = document.getElementById(`amount_owed_${checkbox.value}`);
+        if (checkbox.checked) {
+            amountInput.disabled = false; // Enable input for checked participants
+            amountInput.value = ""; // Reset amount to empty for new entries
+        } else {
+            amountInput.value = "0"; // Reset amount to zero
+            amountInput.disabled = true; // Disable input for unchecked participants
+        }
+        calculateRemainingAmount(); // Calculate remaining amount if needed
+        updateSubmitButtonState(); // Update submit button state
+    }
+
+    function calculateRemainingAmount() {
+        const totalInput = document.getElementById('totalAmount');
+        const totalAmount = parseFloat(totalInput.value) || 0;
+        const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+        const specifiedAmounts = [];
+
+        checkboxes.forEach(participant => {
+            const amountInput = document.getElementById(`amount_owed_${participant.value}`);
+            if (amountInput) {
+                const amount = parseFloat(amountInput.value) || 0;
+                specifiedAmounts.push(amount);
+            }
+        });
+
+        // Calculate the total of specified amounts
+        const totalSpecified = specifiedAmounts.reduce((acc, val) => acc + val, 0);
+        const remainingAmount = totalAmount - totalSpecified;
+
+        // Calculate remaining amount only if there's at least one checked participant
+        if (checkboxes.length > 0) {
+            const lastUncheckedParticipant = [...document.querySelectorAll('input[type="checkbox"]')].find(checkbox => !checkbox.checked);
+            if (lastUncheckedParticipant) {
+                const lastAmountInput = document.getElementById(`amount_owed_${lastUncheckedParticipant.value}`);
+                if (lastAmountInput && !lastAmountInput.value) { // Only assign if no specific amount has been set
+                    lastAmountInput.value = remainingAmount.toFixed(2);
+                }
+            }
+        }
+    }
+
+    function updateSubmitButtonState() {
+        const totalInput = document.getElementById('totalAmount');
+        const totalAmount = parseFloat(totalInput.value) || 0;
+        const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+        const selectedParticipants = Array.from(checkboxes).filter(checkbox => checkbox.checked);
+
+        // Calculate the sum of amounts owed
+        const amountsOwed = selectedParticipants.reduce((acc, participant) => {
+            return acc + (parseFloat(document.getElementById(`amount_owed_${participant.value}`).value) || 0);
+        }, 0);
+
+        // Enable or disable the submit button based on the total amounts
+        const submitButton = document.querySelector('#addTransactionForm button[type="submit"]');
+        submitButton.disabled = totalAmount !== amountsOwed; // Check if total matches the sum of amounts owed
+    }
+</script>

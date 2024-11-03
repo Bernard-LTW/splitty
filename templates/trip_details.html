@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}View Trip - {{ trip.name }}{% endblock %}
+
+{% block content %}
+    <h1>{{ trip.name }}</h1>
+
+    <div class="mb-3">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTransactionModal">Add Transaction
+        </button>
+        <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#addPeopleModal">Add People</button>
+    </div>
+
+    {% if trip.participants %}
+        <h3>Participants</h3>
+        <div class="list-group">
+            {% for participant in trip.participants %}
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5>{{ participant.name }}</h5>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-muted mt-3">No participants to show. Add participants to this trip!</p>
+    {% endif %}
+
+    {% if transactions_by_date %}
+        <h3>Transactions</h3>
+        <div class="accordion" id="transactionsAccordion">
+            {% for date, transactions in transactions_by_date.items() %}
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading{{ loop.index }}">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#collapse{{ loop.index }}" aria-expanded="true"
+                                aria-controls="collapse{{ loop.index }}">
+                            {{ date }} <!-- Display the date -->
+                        </button>
+                    </h2>
+                    <div id="collapse{{ loop.index }}" class="accordion-collapse collapse"
+                         aria-labelledby="heading{{ loop.index }}" data-bs-parent="#transactionsAccordion">
+                        <div class="accordion-body">
+                            <ul class="list-group">
+                                {% for transaction in transactions %}
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h5>{{ transaction.description }}</h5>
+                                            <p>Amount: ${{ transaction.amount }}</p>
+                                            <!-- Use transaction.total_amount -->
+                                            <p>Spent by: {{ transaction.payer.name }}</p>
+                                        </div>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-muted mt-3">No transactions to show. Add transactions to this trip!</p>
+    {% endif %}
+
+    {% include 'add_transaction_modal.html' %}
+    {% include 'add_people_to_trip_modal.html' %}
+{% endblock %}

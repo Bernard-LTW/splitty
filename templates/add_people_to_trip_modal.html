@@ -1,0 +1,48 @@
+<!-- Add Existing Users Modal -->
+<div class="modal fade" id="addPeopleModal" tabindex="-1" aria-labelledby="addPeopleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addPeopleModalLabel">Add Existing Users</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addPeopleForm" action="{{ url_for('add_existing_people', trip_id=trip.id) }}" method="POST">
+                    <input type="hidden" name="trip_id" value="{{ trip.id }}">
+
+                    <div id="existingUsersContainer" class="mb-3">
+                        <!-- Checkboxes will be populated dynamically -->
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Selected Users</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).on('show.bs.modal', '#addPeopleModal', function () {
+    var tripId = {{ trip.id }}; // Get the trip ID from the template
+    $.ajax({
+        url: '/api/non_participants/' + tripId,
+        type: 'GET',
+        success: function (data) {
+            var container = $('#existingUsersContainer');
+            container.empty(); // Clear the previous options
+            $.each(data, function (index, user) {
+                container.append(`
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="user_ids" value="${user.id}" id="user_${user.id}">
+                        <label class="form-check-label" for="user_${user.id}">
+                            ${user.name} (${user.email})
+                        </label>
+                    </div>
+                `);
+            });
+        },
+        error: function () {
+            console.error('Failed to load existing users.');
+        }
+    });
+});
+</script>

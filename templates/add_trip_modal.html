@@ -1,0 +1,43 @@
+<!-- add_trip_modal.html -->
+<div class="modal fade" id="addTripModal" tabindex="-1" aria-labelledby="addTripModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addTripModalLabel">Add New Trip</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addTripForm" action="{{ url_for('add_trip') }}" method="POST">
+                    <div class="mb-3">
+                        <label for="tripName" class="form-label">Trip Name</label>
+                        <input type="text" class="form-control" id="tripName" name="trip_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="destination" class="form-label">Destination</label>
+                        <input type="text" class="form-control" id="destination" name="destination" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="startDate" class="form-label">Start Date</label>
+                        <input type="date" class="form-control" id="startDate" name="start_date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="endDate" class="form-label">End Date</label>
+                        <input type="date" class="form-control" id="endDate" name="end_date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="currency" class="form-label">Currency</label>
+                        <select class="form-select" id="currency" name="currency" required>
+                            <option value="" disabled selected>Select currency</option>
+                            <option value="USD">USD</option>
+                            <option value="HKD">HKD</option>
+                            <option value="JPY">JPY</option>
+                            <option value="GBP">GBP</option>
+                            <option value="EUR">EUR</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Trip</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
