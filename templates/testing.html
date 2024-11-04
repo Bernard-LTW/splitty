@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Calculate Debts{% endblock %}
+
+{% block content %}
+<div class="container" style="margin-top: 50px;">
+    <h2>Calculate Debts for Trip</h2>
+    <form method="post" action="{{ url_for('calculate_debts') }}">
+        <div class="form-group">
+            <label for="tripId">Trip ID:</label>
+            <input type="text" id="tripId" name="trip_id" class="form-control" placeholder="Enter Trip ID" required>
+        </div>
+        <button type="submit" class="btn btn-primary mt-3">Calculate Debts</button>
+    </form>
+
+    {% if debt_summary %}
+        <h3 class="mt-4">Debt Summary</h3>
+        <div class="card p-3">
+            {% for debtor, creditors in debt_summary.items() %}
+                <strong>{{ debtor }} owes:</strong>
+                <ul>
+                    {% for creditor, amount in creditors.items() %}
+                        <li>{{ creditor }}: ${{ amount }}</li>
+                    {% endfor %}
+                </ul>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

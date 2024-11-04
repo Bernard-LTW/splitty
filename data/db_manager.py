@@ -1,7 +1,8 @@
 import sqlalchemy as db
 from sqlalchemy import MetaData
 from sqlalchemy.orm import Session
-from data.db_models import People, Trip,Transaction,TransactionParticipant, trip_participants
+from data.db_models import People, Trip, Transaction, TransactionParticipant, trip_participants, Payment
+from data.debt_manager import calculate_net_debts
 
 
 class DBHandler:
@@ -77,3 +78,24 @@ class DBHandler:
         all_users = self.session.query(People).all()
         non_participants = [user for user in all_users if user not in participants]
         return non_participants
+
+    def get_all_users(self):
+        users = self.session.query(People).all()
+        return users
+
+    def get_default_user(self):
+        user = self.session.query(People).filter(People.name == "Bob").first()
+        return user
+
+    def get_user(self, user_id):
+        user = self.session.query(People).filter(People.id == user_id).first()
+        return user
+
+    def get_trip_debt_summary(self, trip_id):
+        return calculate_net_debts(self.session, trip_id)
+
+    def add_payment(self, trip_id, debtor_id, creditor_id, amount, date):
+        payment = Payment(trip_id=trip_id, debtor_id=debtor_id, creditor_id=creditor_id, amount=amount, date=date)
+        self.session.add(payment)
+        self.session.commit()
+        return payment

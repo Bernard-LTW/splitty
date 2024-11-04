@@ -1,4 +1,4 @@
-from sqlalchemy import Table, Column, Integer, ForeignKey, String, DateTime, Float
+from sqlalchemy import Table, Column, Integer, ForeignKey, String, DateTime, Float, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -43,6 +43,7 @@ class TransactionParticipant(Base):
     transaction_id = Column(Integer, ForeignKey('transactions.id'))
     user_id = Column(Integer, ForeignKey('users.id'))
     amount_owed = Column(Float)
+    settled = Column(Boolean, default=False)
 
     # Relationships
     transaction = relationship("Transaction", back_populates="participants")
@@ -62,3 +63,17 @@ class Transaction(Base):
     trip = relationship("Trip", back_populates="transactions")
     payer = relationship("People", back_populates="transactions")
     participants = relationship("TransactionParticipant", back_populates="transaction")
+
+class Payment(Base):
+    __tablename__ = "payments"
+    id = Column(Integer, primary_key=True)
+    trip_id = Column(Integer, ForeignKey('trips.id'))
+    debtor_id = Column(Integer, ForeignKey('users.id'))
+    creditor_id = Column(Integer, ForeignKey('users.id'))
+    amount = Column(Float)  # Amount paid by debtor to creditor
+    date = Column(DateTime)
+
+    # Relationships
+    trip = relationship("Trip")
+    debtor = relationship("People", foreign_keys=[debtor_id])
+    creditor = relationship("People", foreign_keys=[creditor_id])
