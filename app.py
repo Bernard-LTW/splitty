@@ -197,7 +197,9 @@ if __name__ == '__main__':
 
 
 
-#TODO: Add User Selector and Logic to base.html
+#TODO: Remove User Selector, not needed but rather add a main password toekn system
 #TODO: Add ability to calculate who owes who
 #TODO: Add ability to add new users
-#TODO: Add ability to calculate who owes who
+#TODO: Add debt calc to bottom of trip page, add payments and more
+#TODO: Add ability to add payments
+
