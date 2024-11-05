@@ -13,18 +13,24 @@
         <button type="submit" class="btn btn-primary mt-3">Calculate Debts</button>
     </form>
 
-    {% if debt_summary %}
-        <h3 class="mt-4">Debt Summary</h3>
-        <div class="card p-3">
-            {% for debtor, creditors in debt_summary.items() %}
+{% if debt_summary %}
+    <h3 class="mt-4">Debt Summary</h3>
+    <div class="card p-3">
+        {% for debtor, creditors in debt_summary.items() %}
+            {% if creditors %}
                 <strong>{{ debtor }} owes:</strong>
                 <ul>
                     {% for creditor, amount in creditors.items() %}
                         <li>{{ creditor }}: ${{ amount }}</li>
                     {% endfor %}
                 </ul>
-            {% endfor %}
-        </div>
-    {% endif %}
+            {% else %}
+                <div class="alert alert-success" role="alert">
+                    {{ debtor }} doesn't owe anyone anything!
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+{% endif %}
 </div>
 {% endblock %}

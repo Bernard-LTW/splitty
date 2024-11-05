@@ -1,7 +1,9 @@
 import sqlalchemy as db
 from sqlalchemy import MetaData
 from sqlalchemy.orm import Session
-from data.db_models import People, Trip, Transaction, TransactionParticipant, trip_participants, Payment
+
+import secure_password
+from data.db_models import People, Trip, Transaction, TransactionParticipant, trip_participants, Payment,Admin
 from data.debt_manager import calculate_net_debts
 
 
@@ -56,9 +58,9 @@ class DBHandler:
         self.session.commit()
         return
 
-    def add_transaction(self, trip_id, payer_id, amount, description, date, participants, amounts_owed):
+    def add_transaction(self, trip_id, payer_id, amount, name, date, participants, amounts_owed):
         # Create a transaction
-        transaction = Transaction(trip_id=trip_id, payer_id=payer_id, amount=amount, description=description, date=date)
+        transaction = Transaction(trip_id=trip_id, payer_id=payer_id, amount=amount, name=name, date=date)
 
         # Add the transaction to the session first
         self.session.add(transaction)
@@ -99,3 +101,11 @@ class DBHandler:
         self.session.add(payment)
         self.session.commit()
         return payment
+
+    def get_admin(self, username):
+        admin = self.session.query(Admin).filter(Admin.username == username).first()
+        return admin
+
+    def login_admin(self, admin, password):
+        return secure_password.check_hash(password, admin.password)
+

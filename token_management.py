@@ -1,16 +1,20 @@
 from jose import JWTError, jwt
 import os
 import dotenv
-from datetime import datetime
+import datetime
+
+from pycparser.ply.yacc import token
 
 dotenv.load_dotenv()
-token_encryption_key = os.getenv("TOKEN_ENCRYPTION_KEY")#TOKEN_ENCRYPTION_KEY=your_encryption_key
+token_encryption_key = "TOKEN_ENCR"
 
-def create_token(username, token_duration): #token = encoded(username, datetime) token_duration in minutes
-    unix_timestamp = (datetime.now() - datetime(1970, 1, 1)).total_seconds()
-    ttl = token_duration * 60 + unix_timestamp
-    token  = jwt.encode({'username': username, 'datetime': ttl}, token_encryption_key or '', algorithm='HS256')
-    return token
+def generate_token(user):
+    payload = {
+        'user_id': user.id,
+        'username': user.username,
+        'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)  # Use timezone-aware UTC datetime
+    }
+    return jwt.encode(payload, token_encryption_key, algorithm="HS256")
 
 def get_username_from_token(token): #get username from token
     decoded_token = jwt.decode(token, token_encryption_key or '', algorithms=['HS256'])

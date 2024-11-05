@@ -1,26 +1,19 @@
 from collections import defaultdict
 import datetime
 from jose import jwt, JWTError, ExpiredSignatureError
-from flask import Flask, render_template, request, redirect, url_for, jsonify, make_response
+from flask import Flask, render_template, request, redirect, url_for, jsonify, make_response, flash
 from data.db_models import Trip, People, trip_participants
 from data.db_manager import DBHandler
+from token_management import generate_token
 
 app = Flask(__name__)
 db = DBHandler("sqlite:///data/splitty_dev.sqlite")
 
-app.config['SECRET_KEY'] = 'your_secret_key'
+app.config['SECRET_KEY'] = 'TOKEN_ENCR'
 
-# Generate a default user token
-def generate_token(user):
-    payload = {
-        'user_id': user.id,
-        'username':user.name,
-        'exp': datetime.datetime.utcnow() + datetime.timedelta(days=1)
-    }
-    return jwt.encode(payload, app.config['SECRET_KEY'], algorithm="HS256")
 
 def get_user_details():
-    token = request.cookies.get('user_token')
+    token = request.cookies.get('admin_token')
     if not token:
         return None, None
     try:
@@ -31,51 +24,65 @@ def get_user_details():
     except JWTError:
         return None, None
 
-# Middleware for checking token
+
 @app.before_request
-def check_user_token():
-    token = request.cookies.get('user_token')
+def check_admin_token():
+    excluded_routes = ['login','static']
+
+    # Skip token check if the current route is excluded
+    if request.endpoint in excluded_routes:
+        return
+
+    token = request.cookies.get('admin_token')  # Check for the admin token
 
     if not token:
-        # No token found, set default user
-        default_user_id = db.get_default_user()  # Get the default user ID from your database
-        default_token = generate_token(default_user_id)
-        resp = make_response(jsonify({"message": "Default user assigned"}))
-        resp.set_cookie('user_token', default_token, httponly=True)
-        return resp
+        #flash("Please log in to access this page.", "warning")
+        return redirect(url_for('login'))  # Redirect to login if no token
 
-    else:
-        try:
-            # Verify token
-            payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
-            # Store user_id in request context if needed
-            request.user_id = payload["user_id"]
+    try:
+        # Verify token
+        payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+        request.admin_id = payload["user_id"]
+        request.admin_name = payload["username"]
 
-        except ExpiredSignatureError:
-            # Token expired, decode without expiration check to get the user_id
-            payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"], options={"verify_exp": False})
-            user_id = payload["user_id"]
+    except ExpiredSignatureError:
+        #flash("Your session has expired. Please log in again.", "warning")
+        return redirect(url_for('login'))  # Redirect to login if token expired
 
-            # Create a new token for the same user
-            new_token = generate_token(user_id)
-            resp = make_response(jsonify({"message": "Token refreshed"}))
-            resp.set_cookie('user_token', new_token, httponly=True)
-            return resp
+    except JWTError:
+        #flash("Invalid token. Please log in again.", "warning")
+        return redirect(url_for('login'))  # Redirect to login for any other errors
 
-        except JWTError:
-            # Any other JWT errors should result in a new default token
-            default_user_id = db.get_default_user()
-            default_token = generate_token(default_user_id)
-            resp = make_response(jsonify({"message": "Invalid token, default user assigned"}))
-            resp.set_cookie('user_token', default_token, httponly=True)
-            return resp
+def get_logged_in_admin_name():
+    return getattr(request, 'admin_name', None)  # Safely get admin_name from request
 
 @app.route('/')
 def index():
-    user_id, username = get_user_details()
-
+    admin_name = get_logged_in_admin_name()
     trips = db.get_all_trips()
-    return render_template('index.html', trips=trips, username=username, user_id=user_id)
+    return render_template('index.html', trips=trips, admin_name=admin_name)
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        admin = db.get_admin(username)
+        if admin and db.login_admin(admin, password):
+            token = generate_token(admin)
+            resp = make_response(redirect(url_for('index')))
+            resp.set_cookie('admin_token', token, httponly=True)
+            return resp
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    resp = make_response(redirect(url_for('login')))
+    resp.set_cookie('admin_token', '', expires=0)
+    return resp
+
+
 
 @app.route('/add_trip', methods=['POST'])
 def add_trip():
@@ -148,30 +155,20 @@ def add_transaction():
     return redirect(url_for('trip', trip_id=trip_id))
 
 
-@app.route('/api/non_participants/<int:trip_id>', methods=['GET'])
+@app.route('/non_participants/<int:trip_id>', methods=['GET'])
 def get_existing_users(trip_id):
     users = db.get_all_non_participants(trip_id)
 
     users_list = [{'id': user.id, 'name': user.name, 'email': user.email} for user in users]
     return jsonify(users_list)
 
-@app.route('/api/fetch_users', methods=['GET'])
+@app.route('/fetch_users', methods=['GET'])
 def fetch_users():
     users = db.get_all_users() # Fetch all users
     users_data = [{"id": user.id, "name": user.name} for user in users]
     print(users_data)
     return jsonify(users=users_data)
 
-@app.route('/change_user/<int:user_id>')
-def change_user(user_id):
-    user = db.get_user(user_id)
-    token = generate_token(user)
-    resp = make_response(redirect(request.referrer))
-    resp.set_cookie('user_token', token, httponly=True)
-    return resp
-
-
-### TESTING
 @app.route('/calculate_debts', methods=['GET', 'POST'])
 def calculate_debts():
     debt_summary = None  # Initialize an empty debt summary
@@ -195,11 +192,7 @@ if __name__ == '__main__':
 
 
 
-
-
-#TODO: Remove User Selector, not needed but rather add a main password toekn system
-#TODO: Add ability to calculate who owes who
 #TODO: Add ability to add new users
 #TODO: Add debt calc to bottom of trip page, add payments and more
 #TODO: Add ability to add payments
-
+#TODO: Add manage trips page
